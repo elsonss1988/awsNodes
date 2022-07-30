@@ -12,7 +12,6 @@ dynamo.AWS.config.update({
   endpoint: process.env.AWS_ENDPOINT,
 });
 
-console.log("dynamo.js");
 const dynamoClient = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = "vtex_products";
 
@@ -23,34 +22,83 @@ const getProdutos = async () => {
   return await dynamoClient.scan(params).promise();
 };
 
-const addProduto = async (produto) => {
-  produto.id = generateUUID();
+const processarCombo = async (produtos) => {
+  ordenarLista(produtos);
+  let combos = gerarCombos(produtos);
+  salvarOuAtualizarCombos(combos);
+};
+
+function ordenarLista(produtos) {
+  produtos.sort((item1, item2) => {
+    let item1LowerCase = item1.productId.toLowerCase();
+    let item2LowerCase = item2.productId.toLowerCase();
+
+    if (item1LowerCase < item2LowerCase) {
+      return -1;
+    }
+    if (item1LowerCase > item2LowerCase) {
+      return 1;
+    }
+    return 0;
+  });
+}
+
+function gerarCombos(produtos) {
+  let listaDeCombinacoesDeID = [];
+  for (let i = 0; i < produtos.length; i++) {
+    for (let j = i + 1; j < produtos.length; j++) {
+      let comboProdutoId = produtos[i].id + produtos[j].id;
+      let combo = {
+        comboProdutoId: comboProdutoId,
+        itens: [produtos[i].id, produtos[j].id],
+      };
+      listaDeCombinacoesDeID.push(combo);
+    }
+  }
+  return listaDeCombinacoesDeID;
+}
+
+function salvarOuAtualizarCombos(combos) {
+  combos.map((combo) => {
+    getComboByComboProdutoId(combo.comboProdutoId).then((data) => {
+      if (data.Items.length == 0) {
+        saveCombo(combo);
+      } else {
+        updateCombo(data.Items[0]);
+      }
+    });
+  });
+}
+
+async function getComboByComboProdutoId(comboProdutoId) {
   const params = {
     TableName: TABLE_NAME,
-    Item: produto,
+    FilterExpression: "comboProdutoId = :comboProdutoId",
+    ExpressionAttributeValues: { ":comboProdutoId": comboProdutoId },
+  };
+  let combos = await dynamoClient.scan(params).promise();
+  return combos;
+}
+
+async function saveCombo(combo) {
+  combo.id = generateUUID();
+  combo.quantidade = 1;
+  const params = {
+    TableName: TABLE_NAME,
+    Item: combo,
+  };
+  return await dynamoClient.put(params).promise();
+}
+
+async function updateCombo(combo) {
+  console.log("Tipo da quantidade", typeof combo.quantidade);
+  combo.quantidade++;
+  const params = {
+    TableName: TABLE_NAME,
+    Item: combo,
   };
 
   return await dynamoClient.put(params).promise();
-};
+}
 
-const updateProduto = async (produto) => {
-    produto.quantidade++;
-    const params = {
-        TableName: TABLE_NAME,
-        Item: produto,
-      };
-    
-      return await dynamoClient.put(params).promise();
-};
-
-const getProdutoById = async (sku) => {
-  const params = {
-    TableName: TABLE_NAME,
-    FilterExpression: "sku = :sku",
-    ExpressionAttributeValues: { ":sku": parseInt(sku) },
-  };
-
-  return await dynamoClient.scan(params).promise();
-};
-
-export { dynamoClient, getProdutos, getProdutoById, addProduto, updateProduto };
+export { dynamoClient, getProdutos, processarCombo };
