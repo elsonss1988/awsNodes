@@ -10,7 +10,6 @@ app.get("/", (req, res) => res.send("SPEEDWARE03"));
 app.get("/combos", async (req, res) => {
   try {
     getProdutos().then((data) => {
-      console.log("produtos", data);
       return res.send(data);
     });
   } catch (error) {
@@ -31,7 +30,7 @@ app.post("/combos", async (req, res) => {
 
   } catch (error) {
     console.error("error", error);
-    res.status(500).json({ err: "Algo deu errado" });
+    res.status(500).json({ err: "SERVER ERROR" });
   }
 });
 
