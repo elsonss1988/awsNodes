@@ -1,5 +1,5 @@
 import express from "express";
-import { getProdutos, processarCombo } from "./awsDynamo.js";
+import { getCombos, processarCombo } from "./awsDynamo.js";
 
 const app = express();
 
@@ -9,8 +9,8 @@ app.get("/", (req, res) => res.send("SPEEDWARE03"));
 
 app.get("/combos", async (req, res) => {
   try {
-    getProdutos().then((data) => {
-      return res.send(data);
+    getCombos().then((data) => {
+      return res.json(data);
     });
   } catch (error) {
     console.error("error", error);
@@ -18,15 +18,12 @@ app.get("/combos", async (req, res) => {
   }
 });
 
-// Rota para escutar o evento
-app.post("/combos", async (req, res) => {
+app.post("/evento" , async (req, res) => {
   try {
-    if (req.body.produtos.length == 0) {
-      return res.status(400).json({err: "BAD REQUEST"})
-    } 
-
-    processarCombo(req.body.produtos);
-    return res.status(200).json({ok: "SUCCESS"})
+    console.log("VTEX ESCUTA DO EVENTO", req.body);
+    const orderId = req.body.OrderId;
+    processarCombo(orderId);
+    return res.status(200).json({SUCCESS: "SUCCESS"})
 
   } catch (error) {
     console.error("error", error);

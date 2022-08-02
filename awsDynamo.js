@@ -2,7 +2,8 @@ import dynamo from "dynamodb";
 import AWS from "aws-sdk";
 import dotenv from "dotenv";
 import { generateUUID } from "./util/uuid-generator.js";
-import { getProdutoByProductId } from "./services/catalogo.js";
+import { getProductById } from "./services/catalog.js";
+import { getOrderById } from "./services/order.js";
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ dynamo.AWS.config.update({
 const dynamoClient = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = "vtex_products";
 
-const getProdutos = async () => {
+const getCombos = async () => {
   const params = {
     TableName: TABLE_NAME,
   };
@@ -30,8 +31,7 @@ const getProdutos = async () => {
     let produtos = [];
     
     await Promise.all(listaDeProductId.map(async (productId) => {
-      let produto = await getProdutoByProductId(productId);
-      // console.log("produto", produto.data);
+      let produto = await getProductById(productId);
       produtos.push(produto.data);
     }));
    
@@ -42,7 +42,12 @@ const getProdutos = async () => {
   return itens;
 };
 
-const processarCombo = async (produtos) => {
+const processarCombo = async (orderId) => {
+  const { data } = await getOrderById(orderId);
+  const produtos = data.items;
+  if (produtos.length <= 0) {
+    return;
+  }
   ordenarLista(produtos);
   let combos = gerarCombos(produtos);
   salvarOuAtualizarCombos(combos);
@@ -120,4 +125,4 @@ async function updateCombo(combo) {
   return await dynamoClient.put(params).promise();
 }
 
-export { dynamoClient, getProdutos, processarCombo };
+export { dynamoClient, getCombos, processarCombo };
