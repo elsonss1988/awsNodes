@@ -2,6 +2,8 @@ import dynamo from "dynamodb";
 import AWS from "aws-sdk";
 import dotenv from "dotenv";
 import { generateUUID } from "./util/uuid-generator.js";
+import { getProductById } from "./services/catalog.js";
+import { getOrderById } from "./services/order.js";
 
 dotenv.config();
 
@@ -15,14 +17,37 @@ dynamo.AWS.config.update({
 const dynamoClient = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = "vtex_products";
 
-const getProdutos = async () => {
+const getCombos = async () => {
   const params = {
     TableName: TABLE_NAME,
   };
-  return await dynamoClient.scan(params).promise();
+
+  const response = await dynamoClient.scan(params).promise();
+
+  const itens = response.Items;
+
+  await Promise.all(itens.map(async (item) => {
+    let listaDeProductId = item.itens;
+    let produtos = [];
+    
+    await Promise.all(listaDeProductId.map(async (productId) => {
+      let produto = await getProductById(productId);
+      produtos.push(produto.data);
+    }));
+   
+   item.produtos = produtos;
+  }));
+
+  
+  return itens;
 };
 
-const processarCombo = async (produtos) => {
+const processarCombo = async (orderId) => {
+  const { data } = await getOrderById(orderId);
+  const produtos = data.items;
+  if (produtos.length <= 0) {
+    return;
+  }
   ordenarLista(produtos);
   let combos = gerarCombos(produtos);
   salvarOuAtualizarCombos(combos);
@@ -61,7 +86,7 @@ function gerarCombos(produtos) {
 function salvarOuAtualizarCombos(combos) {
   combos.map((combo) => {
     getComboByComboProdutoId(combo.comboProdutoId).then((data) => {
-      if (data.Items.length == 0) {
+      if (data.Items.length === 0) {
         saveCombo(combo);
       } else {
         updateCombo(data.Items[0]);
@@ -91,7 +116,6 @@ async function saveCombo(combo) {
 }
 
 async function updateCombo(combo) {
-  console.log("Tipo da quantidade", typeof combo.quantidade);
   combo.quantidade++;
   const params = {
     TableName: TABLE_NAME,
@@ -101,4 +125,4 @@ async function updateCombo(combo) {
   return await dynamoClient.put(params).promise();
 }
 
-export { dynamoClient, getProdutos, processarCombo };
+export { dynamoClient, getCombos, processarCombo };
