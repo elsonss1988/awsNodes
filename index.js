@@ -1,9 +1,12 @@
 import express from "express";
 import { getCombos, processarCombo } from "./awsDynamo.js";
+import cors from "cors";
 
 const app = express();
 
 app.use(express.json());
+
+app.use(cors());
 
 app.get("/", (req, res) => res.send("SPEEDWARE03"));
 
@@ -14,16 +17,16 @@ app.get("/combos", async (req, res) => {
     });
   } catch (error) {
     console.error("error", error);
-    res.status(500).json({ err: "Algo deu errado" });
+    res.status(500).json({ err: "SERVER ERROR" });
   }
 });
 
-app.post("/evento" , async (req, res) => {
+app.post("/combos" , async (req, res) => {
   try {
     console.log("VTEX ESCUTA DO EVENTO", req.body);
     const orderId = req.body.OrderId;
-    processarCombo(orderId);
-    return res.status(200).json({SUCCESS: "SUCCESS"})
+    await processarCombo(orderId);
+    return res.status(200).json({SUCCESS: "Combo Registered Successfully!"})
 
   } catch (error) {
     console.error("error", error);
