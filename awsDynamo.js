@@ -26,10 +26,13 @@ const getCombos = async () => {
 
   const items = response.Items;
 
+  console.log("Items", items);
+
   await Promise.all(items.map(async (combo) => {
     let productIdList = combo.items;
     let products = [];
     
+    console.log("productIslist", productIdList);
     await Promise.all(productIdList.map(async (productId) => {
       let product = await getProductById(productId);
       products.push(product.data);
@@ -75,7 +78,7 @@ function generateCombos(products) {
       let comboProductId = products[i].id + products[j].id;
       let combo = {
         comboProductId: comboProductId,
-        itens: [products[i].id, products[j].id],
+        items: [products[i].id, products[j].id],
       };
       listOfProductIdCombinations.push(combo);
     }

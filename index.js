@@ -1,5 +1,5 @@
 import express from "express";
-import { getCombos, processarCombo } from "./awsDynamo.js";
+import { getCombos, processCombos } from "./awsDynamo.js";
 import cors from "cors";
 
 const app = express();
@@ -8,7 +8,7 @@ app.use(express.json());
 
 app.use(cors());
 
-app.get("/", (req, res) => res.send("SPEEDWARE03"));
+app.get("/", (req, res) => res.json({ api: "SPEEDWARE-API", version: 1.0}));
 
 app.get("/combos", async (req, res) => {
   try {
@@ -25,7 +25,7 @@ app.post("/combos" , async (req, res) => {
   try {
     console.log("VTEX ESCUTA DO EVENTO", req.body);
     const orderId = req.body.OrderId;
-    await processarCombo(orderId);
+    await processCombos(orderId);
     return res.status(200).json({SUCCESS: "Combo Registered Successfully!"})
 
   } catch (error) {
