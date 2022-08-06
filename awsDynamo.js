@@ -92,7 +92,9 @@ function salvarOuAtualizarCombos(combos) {
       if (data.Items.length === 0) {
         saveCombo(combo);
       } else {
-        updateCombo(data.Items[0]);
+        let comboTobeUpdated = data.Items[0]
+        comboTobeUpdated.amount++;
+        updateCombo(comboTobeUpdated);
       }
     });
   });
@@ -120,7 +122,6 @@ async function saveCombo(combo) {
 }
 
 async function updateCombo(combo) {
-  combo.amount++;
   const params = {
     TableName: TABLE_NAME,
     Item: combo,
@@ -129,4 +130,59 @@ async function updateCombo(combo) {
   return await dynamoClient.put(params).promise();
 }
 
-export { dynamoClient, getCombos, processCombos };
+
+const setCombosAvailability = async (combos) => {
+  console.log("set combo availability")
+  combos.map((comboId) => {
+    getComboById(comboId).then((data) => {
+      if (data.Items.length > 0) {
+        data.Items[0].available = !data.Items[0].available;
+        updateCombo(data.Items[0]);
+      }
+    });
+  });
+};
+
+async function getComboById(comboId) {
+  var params = {
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "id = :comboId",
+    ExpressionAttributeValues: {
+      ":comboId": comboId
+    } 
+   };
+  let data = await dynamoClient.query(params).promise();
+  return data;
+}
+
+const getAvailableCombos = async () => {
+  console.log("Available Combos");
+  const params = {
+    TableName: TABLE_NAME,
+    FilterExpression: "available = :available",
+    ExpressionAttributeValues: { ":available": true },
+  };
+  const response = await dynamoClient.scan(params).promise();
+
+  const items = response.Items;
+
+  console.log("Items", items);
+
+  await Promise.all(items.map(async (combo) => {
+    let productIdList = combo.items;
+    let products = [];
+    
+    console.log("productIslist", productIdList);
+    await Promise.all(productIdList.map(async (productId) => {
+      let product = await getProductById(productId);
+      products.push(product.data);
+    }));
+   
+    combo.products = products;
+  }));
+
+  
+  return items;
+}
+
+export { dynamoClient, getCombos, processCombos, setCombosAvailability, getAvailableCombos };
